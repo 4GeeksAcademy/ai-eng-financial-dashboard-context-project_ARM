@@ -54,3 +54,26 @@
 | 9. Entrada del umbral de alerta | Permitir que el usuario introduzca el ratio mediante un input numérico, según el briefing. | el PM |
 | 10. Categoría sin ingresos en el top por línea de negocio | Mostrar solo las categorías que devuelve la API; las categorías sin movimientos no se completan con filas de valor cero. | el PM |
 | 11. Tipo del gráfico comparativo B2B vs B2C | Usar un gráfico de barras para comparar visualmente el total de ingresos de ambos grupos. | el PM |
+
+## Validaciones Componentes-Types
+
+Corrección de la verificación anterior: `BusinessType` no debe marcarse como tipo no localizado. Está definido como `'B2B' | 'B2C'` en `frontend/src/lib/financial-types.ts` y se importa y utiliza tanto en `api-types.ts` como en `param-types.ts`. Por tanto, está correctamente referenciado, aunque su definición canónica viva en el módulo de tipos financieros.
+
+| Tipo usado en `components.md` | Estado | Verificación |
+|---|---|---|
+| `BusinessType` | ✅ | Importado por `api-types.ts` y `param-types.ts` desde `src/lib/financial-types.ts`; allí se define como `'B2B' \| 'B2C'`. |
+| `FacetsResponse`, `AlertEntry`, `AlertsResponse`, `CategoryEntry`, `TopCategoriesResponse` | ✅ | Declarados en `api-types.ts`. |
+| `DateRangeFilter`, `AlertsParams`, `TopCategoriesParams`, `MetricsParams` | ✅ | Declarados en `param-types.ts`. |
+| `Pick<FacetsResponse, ...>` y `FacetsResponse['categories']` | ✅ | Tipos derivados de `FacetsResponse`, usando el utilitario `Pick` y acceso indexado de TypeScript. |
+| `AlertsParams['threshold']` | ✅ | Tipo derivado de la propiedad `threshold` de `AlertsParams`; la propiedad es opcional. |
+| `number`, `string` y firmas de callback como `(value: DateRangeFilter) => void` | ✅ | Primitivos y tipos estructurales válidos de TypeScript; las firmas de callback se escriben directamente en las props, no son interfaces exportadas por esos archivos. |
+| Respuesta de `/api/metrics/comparison` y campos de total B2B/B2C | ❓ | Los tipos revisados no declaran un contrato de respuesta para ese endpoint. Que las props usen `number` es válido como tipo TypeScript, pero no verifica de qué respuesta provienen los totales ni confirma sus propiedades. |
+
+### Resolución de dudas
+
+| Nombre de la duda | duda a resolver | resolucion |
+|---|---|---|
+| Top-5 vacío | ¿Qué muestra cada panel si la lista top-5 de B2B o B2C está vacía? | El panel B2B muestra «No hay categorías de ingresos B2B para el rango seleccionado.» y el panel B2C muestra «No hay categorías de ingresos B2C para el rango seleccionado.» Cada panel presenta su estado de forma independiente. |
+| Fechas vacías | ¿Qué datos se muestran si los campos de fecha de inicio y fin están vacíos? | Se omiten `start_date` y `end_date` en la petición y se muestran todos los datos disponibles. El rango disponible se presenta como referencia usando `min_date` y `max_date` de `FacetsResponse`. |
+| Representación del gráfico | ¿Qué tipo de gráfico compara los ingresos B2B y B2C? | Un gráfico de barras con dos barras: una para el total de ingresos B2B y otra para el total de ingresos B2C, ambos para el mismo rango de fechas. |
+| Origen de los valores del gráfico | ¿De dónde sale el valor de cada barra: lo devuelve la API o se calcula? | Según la decisión 3 de este documento, obtener los datos de `/api/metrics/summary`, filtrarlos por `business_type` y rango de fechas, y sumar los ingresos de cada grupo. Cada barra representa ese total del grupo; no se calcula sumando únicamente las categorías top-5. El contrato de respuesta de `/api/metrics/summary` aún debe verificarse antes de integrar el cálculo. |
